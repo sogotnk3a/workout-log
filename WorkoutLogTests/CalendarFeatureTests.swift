@@ -123,7 +123,81 @@ struct CalendarFeatureTests {
         let store = makeStore()
 
         await store.send(.workoutTapped(UUID(1))) {
-            $0.path[id: 0] = WorkoutDetailFeature.State(workoutID: UUID(1))
+            $0.path[id: 0] = .workoutDetail(WorkoutDetailFeature.State(workoutID: UUID(1)))
+        }
+    }
+
+    @Test
+    func 分析ボタンを押すと分析画面が開く() async {
+        let store = makeStore()
+
+        await store.send(.analysisButtonTapped) {
+            $0.path[id: 0] = .analysis(StatsAnalysisFeature.State())
+        }
+    }
+
+    @Test
+    func 分析画面で部位をタップすると部位の内訳画面が追加で開く() async {
+        let store = makeStore()
+        await store.send(.analysisButtonTapped) {
+            $0.path[id: 0] = .analysis(StatsAnalysisFeature.State())
+        }
+
+        await store.send(.path(.element(id: 0, action: .analysis(.bodyPartTapped(.chest)))))
+        await store.receive(\.path[id: 0].analysis.delegate.bodyPartTapped) {
+            $0.path[id: 1] = .bodyPartDetail(BodyPartDetailFeature.State(part: .chest, referenceDate: self.now))
+        }
+    }
+
+    @Test
+    func 分析画面で種目をタップすると重量の推移画面が追加で開く() async {
+        let store = makeStore()
+        await store.send(.analysisButtonTapped) {
+            $0.path[id: 0] = .analysis(StatsAnalysisFeature.State())
+        }
+
+        await store.send(.path(.element(id: 0, action: .analysis(.exerciseTapped("squat")))))
+        await store.receive(\.path[id: 0].analysis.delegate.exerciseTapped) {
+            $0.path[id: 1] = .trend(ExerciseTrendFeature.State(exercise: .preset("squat")))
+        }
+    }
+
+    @Test
+    func 分析画面でボリューム指標を選んでから部位をタップすると内訳画面もボリュームで開く() async {
+        let store = makeStore()
+        await store.send(.analysisButtonTapped) {
+            $0.path[id: 0] = .analysis(StatsAnalysisFeature.State())
+        }
+
+        await store.send(.path(.element(id: 0, action: .analysis(.nextMetricButtonTapped)))) {
+            $0.path[id: 0] = .analysis(StatsAnalysisFeature.State(metric: .volume))
+        }
+
+        await store.send(.path(.element(id: 0, action: .analysis(.bodyPartTapped(.chest)))))
+        await store.receive(\.path[id: 0].analysis.delegate.bodyPartTapped) {
+            $0.path[id: 1] = .bodyPartDetail(BodyPartDetailFeature.State(part: .chest, metric: .volume, referenceDate: self.now))
+        }
+    }
+
+    @Test
+    func 部位の内訳画面で種目をタップすると重量の推移画面が追加で開く() async {
+        let store = withDependencies {
+            $0.calendar = calendar
+            $0.date.now = now
+        } operation: {
+            var state = CalendarFeature.State()
+            state.path.append(.bodyPartDetail(BodyPartDetailFeature.State(part: .chest)))
+            return TestStore(initialState: state) {
+                CalendarFeature()
+            } withDependencies: {
+                $0.calendar = calendar
+                $0.date.now = now
+            }
+        }
+
+        await store.send(.path(.element(id: 0, action: .bodyPartDetail(.exerciseTapped("bench-press")))))
+        await store.receive(\.path[id: 0].bodyPartDetail.delegate.exerciseTapped) {
+            $0.path[id: 1] = .trend(ExerciseTrendFeature.State(exercise: .preset("bench-press")))
         }
     }
 

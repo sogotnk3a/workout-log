@@ -21,13 +21,21 @@ struct CalendarFeature {
         }
     }
 
+    @Reducer
+    enum Path {
+        case analysis(StatsAnalysisFeature)
+        case bodyPartDetail(BodyPartDetailFeature)
+        case trend(ExerciseTrendFeature)
+        case workoutDetail(WorkoutDetailFeature)
+    }
+
     @ObservableState
     struct State: Equatable {
         /// 表示している月の1日
         var month: Date
         /// 選んでいる日（0時0分）
         var selectedDay: Date
-        var path = StackState<WorkoutDetailFeature.State>()
+        var path = StackState<Path.State>()
         @Presents var destination: Destination.State?
         @Shared(.workoutHistory) var history
 
@@ -40,11 +48,12 @@ struct CalendarFeature {
     }
 
     enum Action {
+        case analysisButtonTapped
         case dayTapped(Date)
         case deleteWorkoutSwiped(Workout.ID)
         case destination(PresentationAction<Destination.Action>)
         case nextMonthButtonTapped
-        case path(StackActionOf<WorkoutDetailFeature>)
+        case path(StackActionOf<Path>)
         case previousMonthButtonTapped
         case workoutTapped(Workout.ID)
     }
@@ -55,6 +64,10 @@ struct CalendarFeature {
     var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case .analysisButtonTapped:
+                state.path.append(.analysis(StatsAnalysisFeature.State()))
+                return .none
+
             case let .dayTapped(day):
                 state.selectedDay = day
                 return .none
@@ -75,6 +88,26 @@ struct CalendarFeature {
                 state.showMonth(adding: 1, calendar: calendar, now: now)
                 return .none
 
+            case let .path(.element(id, action: .analysis(.delegate(.bodyPartTapped(part))))):
+                guard case let .analysis(analysisState) = state.path[id: id] else { return .none }
+                state.path.append(.bodyPartDetail(BodyPartDetailFeature.State(
+                    part: part,
+                    range: analysisState.range,
+                    metric: analysisState.metric,
+                    referenceDate: analysisState.referenceDate(calendar: calendar, now: now)
+                )))
+                return .none
+
+            case let .path(.element(_, action: .analysis(.delegate(.exerciseTapped(id))))):
+                guard let exercise = Exercise.presets.first(where: { $0.id == id }) else { return .none }
+                state.path.append(.trend(ExerciseTrendFeature.State(exercise: exercise)))
+                return .none
+
+            case let .path(.element(_, action: .bodyPartDetail(.delegate(.exerciseTapped(id))))):
+                guard let exercise = Exercise.presets.first(where: { $0.id == id }) else { return .none }
+                state.path.append(.trend(ExerciseTrendFeature.State(exercise: exercise)))
+                return .none
+
             case .path:
                 return .none
 
@@ -83,18 +116,17 @@ struct CalendarFeature {
                 return .none
 
             case let .workoutTapped(id):
-                state.path.append(WorkoutDetailFeature.State(workoutID: id))
+                state.path.append(.workoutDetail(WorkoutDetailFeature.State(workoutID: id)))
                 return .none
             }
         }
-        .forEach(\.path, action: \.path) {
-            WorkoutDetailFeature()
-        }
+        .forEach(\.path, action: \.path)
         .ifLet(\.$destination, action: \.destination)
     }
 }
 
 extension CalendarFeature.Destination.State: Equatable {}
+extension CalendarFeature.Path.State: Equatable {}
 
 /// カレンダーの1日分のマス
 struct CalendarDay: Equatable, Identifiable {
@@ -232,8 +264,26 @@ struct CalendarView: View {
                 }
             }
             .navigationTitle("カレンダー")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        store.send(.analysisButtonTapped)
+                    } label: {
+                        Label("分析", systemImage: "chart.bar.xaxis")
+                    }
+                }
+            }
         } destination: { store in
-            WorkoutDetailView(store: store)
+            switch store.case {
+            case let .analysis(store):
+                StatsAnalysisView(store: store)
+            case let .bodyPartDetail(store):
+                BodyPartDetailView(store: store)
+            case let .trend(store):
+                ExerciseTrendView(store: store)
+            case let .workoutDetail(store):
+                WorkoutDetailView(store: store)
+            }
         }
         .alert($store.scope(state: \.destination?.deleteAlert, action: \.destination.deleteAlert))
     }

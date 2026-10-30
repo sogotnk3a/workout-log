@@ -52,6 +52,14 @@ struct WorkoutTests {
     }
 
     @Test
+    func 推定1RMの対象はバーベルのビッグ3だけ() {
+        let supported = Exercise.presets.filter(\.supportsOneRepMax).map(\.id)
+        #expect(supported == ["bench-press", "deadlift", "squat"])
+        #expect(Exercise.preset("lat-pulldown").supportsOneRepMax == false)
+        #expect(Exercise.preset("leg-press").supportsOneRepMax == false)
+    }
+
+    @Test
     func 一度もやっていない種目には前回の値がない() {
         let history = [Workout(id: UUID(0), startedAt: .distantPast)]
         #expect(history.lastSets(of: "bench-press") == nil)

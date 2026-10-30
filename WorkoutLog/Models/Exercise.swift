@@ -37,6 +37,18 @@ enum BodyPart: String, CaseIterable, Codable, Sendable {
         case .abs: Color(red: 0.05, green: 0.60, blue: 0.65)
         }
     }
+
+    /// `ExerciseIcon` で使う、部位ごとに見た目を変えるためのSF Symbol
+    var iconSystemName: String {
+        switch self {
+        case .chest: "figure.strengthtraining.traditional"
+        case .back: "figure.climbing"
+        case .legs: "figure.stair.stepper"
+        case .shoulders: "figure.strengthtraining.functional"
+        case .arms: "dumbbell.fill"
+        case .abs: "figure.core.training"
+        }
+    }
 }
 
 /// 種目のマスター
@@ -44,6 +56,37 @@ struct Exercise: Equatable, Hashable, Identifiable, Codable, Sendable {
     let id: String
     var name: String
     var bodyPart: BodyPart
+
+    /// 推定1RMを出す意味がある種目か。保存した記録にこの種目のスナップショットが残るため、
+    /// 保存済みデータのデコードを壊さないよう、プロパティではなく id から判定する
+    var supportsOneRepMax: Bool {
+        Self.oneRepMaxExerciseIDs.contains(id)
+    }
+
+    /// 1RMを測る文化があるバーベルのコンパウンド種目だけに絞る。マシン・補助種目は対象外
+    private static let oneRepMaxExerciseIDs: Set<String> = ["bench-press", "squat", "deadlift"]
+}
+
+/// 種目一覧・種目の行で使う簡易アイコン。部位ごとに色とSF Symbolを変えている仮のもので、
+/// 実際のイラストに差し替えるときはここだけ直せばいい
+struct ExerciseIcon: View {
+    let exercise: Exercise
+    var size: CGFloat = 36
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+            .fill(exercise.bodyPart.color.gradient.opacity(0.2))
+            .frame(width: size, height: size)
+            .overlay {
+                RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+                    .strokeBorder(exercise.bodyPart.color.opacity(0.25), lineWidth: 1)
+            }
+            .overlay {
+                Image(systemName: exercise.bodyPart.iconSystemName)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundStyle(exercise.bodyPart.color)
+            }
+    }
 }
 
 extension Exercise {
