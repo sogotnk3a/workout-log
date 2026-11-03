@@ -10,19 +10,66 @@ import SwiftUI
 
 @Reducer
 struct MyPageFeature {
-    @ObservableState
-    struct State: Equatable {}
+    @Reducer
+    enum Path {
+        case analysis(StatsAnalysisFeature)
+        case exerciseList(StatsExerciseListFeature)
+    }
 
-    enum Action {}
+    @ObservableState
+    struct State: Equatable {
+        var path = StackState<Path.State>()
+    }
+
+    enum Action {
+        case analysisButtonTapped
+        case path(StackActionOf<Path>)
+    }
+
+    var body: some ReducerOf<Self> {
+        Reduce { state, action in
+            switch action {
+            case .analysisButtonTapped:
+                state.path.append(.exerciseList(StatsExerciseListFeature.State()))
+                return .none
+
+            case let .path(.element(id: _, action: .exerciseList(.delegate(.select(exercise))))):
+                state.path.append(.analysis(StatsAnalysisFeature.State(exercise: exercise)))
+                return .none
+
+            case .path:
+                return .none
+            }
+        }
+        .forEach(\.path, action: \.path)
+    }
 }
 
+extension MyPageFeature.Path.State: Equatable {}
+
 struct MyPageView: View {
-    let store: StoreOf<MyPageFeature>
+    @Bindable var store: StoreOf<MyPageFeature>
 
     var body: some View {
-        NavigationStack {
-            Color.clear
-                .navigationTitle("マイページ")
+        NavigationStack(path: $store.scope(state: \.path, action: \.path)) {
+            List {
+                Section {
+                    Button {
+                        store.send(.analysisButtonTapped)
+                    } label: {
+                        Label("分析", systemImage: "chart.bar.xaxis")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                }
+            }
+            .navigationTitle("マイページ")
+        } destination: { store in
+            switch store.case {
+            case let .analysis(store):
+                StatsAnalysisView(store: store)
+            case let .exerciseList(store):
+                StatsExerciseListView(store: store)
+            }
         }
     }
 }
