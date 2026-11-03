@@ -90,12 +90,6 @@ extension Collection<Workout> {
         filter { interval.contains($0.startedAt) }
     }
 
-    /// 記録が1件以上ある種目。`Exercise.presets` の並び順
-    var exercisesWithRecords: [Exercise] {
-        let recorded = Set(flatMap { $0.exercises.map(\.exercise.id) })
-        return Exercise.presets.filter { recorded.contains($0.id) }
-    }
-
     /// 指定した種目・期間で、推定1RMが一番高かったセット（トレーニングの日付つき）。対象のセットが1つもなければ nil
     func best1RMEntry(of exerciseID: Exercise.ID, in period: StatsPeriod, calendar: Calendar, now: Date) -> Best1RMEntry? {
         workouts(in: period, calendar: calendar, now: now)
@@ -122,16 +116,6 @@ struct Best1RMEntry: Equatable {
 }
 
 extension StatsPeriod {
-    /// 対応する `Calendar.Component`。全期間には区切りがないので nil
-    var calendarComponent: Calendar.Component? {
-        switch self {
-        case .week: .weekOfYear
-        case .month: .month
-        case .year: .year
-        case .all: nil
-        }
-    }
-
     /// 「10/4」「9月」「2026年」のような、区間の開始日に対応するラベル
     func dateLabel(for date: Date, calendar: Calendar) -> String {
         switch self {

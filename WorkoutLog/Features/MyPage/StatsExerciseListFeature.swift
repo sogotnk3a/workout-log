@@ -92,24 +92,6 @@ struct StatsExerciseListView: View {
     }
 }
 
-private struct BodyPartChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, 14)
-                .frame(minHeight: 36)
-                .foregroundStyle(isSelected ? Color(.systemBackground) : .primary)
-                .background(isSelected ? Color.primary : Color(.secondarySystemGroupedBackground), in: .capsule)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 private struct StatsExerciseRow: View {
     let exercise: Exercise
 

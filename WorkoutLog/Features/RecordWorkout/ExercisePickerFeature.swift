@@ -109,7 +109,8 @@ struct ExercisePickerView: View {
     }
 }
 
-private struct BodyPartChip: View {
+/// 部位で絞り込むチップ。種目一覧と分析の種目一覧で共有する
+struct BodyPartChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void

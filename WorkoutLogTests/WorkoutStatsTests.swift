@@ -26,24 +26,6 @@ struct WorkoutStatsTests {
     }
 
     @Test
-    func 記録がある種目はExerciseのpresetsの順で並ぶ() {
-        let history: IdentifiedArrayOf<Workout> = [
-            .sample(id: UUID(1), startedAt: now, exercises: [.preset("squat"), .preset("bench-press")]),
-        ]
-
-        #expect(history.exercisesWithRecords.map(\.id) == ["bench-press", "squat"])
-    }
-
-    @Test
-    func 記録がない種目は切り替え候補に出ない() {
-        let history: IdentifiedArrayOf<Workout> = [
-            .sample(id: UUID(1), startedAt: now, exercises: [.preset("bench-press")]),
-        ]
-
-        #expect(history.exercisesWithRecords.map(\.id) == ["bench-press"])
-    }
-
-    @Test
     func ベスト推定1RMは指定した期間のセットの中で一番高い値を取る() {
         let history: IdentifiedArrayOf<Workout> = [
             Workout(
